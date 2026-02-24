@@ -22,8 +22,8 @@ function PatientForm() {
   const [error, setError] = useState('');
 
   const offices = [
-    { id: 'OFFICE1_UUID', name: 'Office 1' },
-    { id: 'OFFICE2_UUID', name: 'Office 2' }
+    { id: 550e8400-e29b-41d4-a716-446655440000', name: 'Office 1' },
+    { id: 'c0a8012e-5f3a-4b5b-9e77-7e5c2b3e44d1', name: 'Office 2' }
   ];
 
   const handleChange = (e) => {
