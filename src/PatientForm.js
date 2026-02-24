@@ -1,56 +1,70 @@
 // src/PatientForm.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import './PatientForm.css'; // Import CSS file
+import './PatientForm.css';
 
 function PatientForm() {
+  const [offices, setOffices] = useState([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     dob: '',
     email: '',
     phone: '',
-    officeId: 'OFFICE1_UUID',
+    officeId: '', // will be populated dynamically
     symptoms: '',
     medications: '',
     allergies: '',
     medicalHistory: '',
     notes: ''
   });
-
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const offices = [
-    { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Office 1' },
-    { id: 'c0a8012e-5f3a-4b5b-9e77-7e5c2b3e44d1', name: 'Office 2' }
-  ];
+  // Fetch offices from Supabase
+  useEffect(() => {
+    async function fetchOffices() {
+      const { data, error } = await supabase
+        .from('Offices')  // replace with your actual offices table name
+        .select('id, name');
+      if (error) {
+        console.error('Error fetching offices:', error);
+      } else {
+        setOffices(data);
+        if (data.length > 0) {
+          setFormData(prev => ({ ...prev, officeId: data[0].id })); // default first office
+        }
+      }
+    }
+    fetchOffices();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
 
-  if (!formData.firstName || !formData.lastName || !formData.dob || !formData.symptoms) {
-    setError('Please fill out all required fields.');
-    return;
-  }
+    // Validate required fields
+    if (!formData.firstName || !formData.lastName || !formData.dob || !formData.symptoms || !formData.officeId) {
+      setError('Please fill out all required fields.');
+      return;
+    }
 
-  const { error } = await supabase
-    .from('PatientIntakes')
-    .insert([formData]);
+    const { error } = await supabase
+      .from('PatientIntakes') // your table
+      .insert([formData]);
 
-  if (error) {
-    console.error('Supabase error:', error);
-    setError(`Submission failed: ${error.message}`);
-  } else {
-    setSubmitted(true);
-  }
-};
+    if (error) {
+      console.error('Supabase error:', error);
+      setError(`Submission failed: ${error.message}`);
+    } else {
+      setSubmitted(true);
+    }
+  };
 
   if (submitted) {
     return (
@@ -64,7 +78,6 @@ function PatientForm() {
   return (
     <form className="patient-form" onSubmit={handleSubmit}>
       <h2 className="form-title">Patient Intake Form</h2>
-
       {error && <p className="form-error">{error}</p>}
 
       <div className="form-group">
@@ -94,7 +107,7 @@ function PatientForm() {
 
       <div className="form-group">
         <label>Office *</label>
-        <select name="officeId" value={formData.officeId} onChange={handleChange}>
+        <select name="officeId" value={formData.officeId} onChange={handleChange} required>
           {offices.map(office => (
             <option key={office.id} value={office.id}>{office.name}</option>
           ))}
@@ -103,53 +116,27 @@ function PatientForm() {
 
       <div className="form-group">
         <label>Symptoms *</label>
-        <textarea
-          name="symptoms"
-          value={formData.symptoms}
-          onChange={handleChange}
-          placeholder="Describe your symptoms"
-          required
-        />
+        <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} placeholder="Describe your symptoms" required />
       </div>
 
       <div className="form-group">
         <label>Current Medications</label>
-        <textarea
-          name="medications"
-          value={formData.medications}
-          onChange={handleChange}
-          placeholder="List any medications you take"
-        />
+        <textarea name="medications" value={formData.medications} onChange={handleChange} placeholder="List any medications you take" />
       </div>
 
       <div className="form-group">
         <label>Allergies</label>
-        <textarea
-          name="allergies"
-          value={formData.allergies}
-          onChange={handleChange}
-          placeholder="List any allergies"
-        />
+        <textarea name="allergies" value={formData.allergies} onChange={handleChange} placeholder="List any allergies" />
       </div>
 
       <div className="form-group">
         <label>Medical History</label>
-        <textarea
-          name="medicalHistory"
-          value={formData.medicalHistory}
-          onChange={handleChange}
-          placeholder="Brief medical history"
-        />
+        <textarea name="medicalHistory" value={formData.medicalHistory} onChange={handleChange} placeholder="Brief medical history" />
       </div>
 
       <div className="form-group">
         <label>Additional Notes</label>
-        <textarea
-          name="notes"
-          value={formData.notes}
-          onChange={handleChange}
-          placeholder="Any other information"
-        />
+        <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Any other information" />
       </div>
 
       <button type="submit" className="form-submit">Submit</button>
