@@ -1,5 +1,5 @@
 // src/Dashboard.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import './Dashboard.css';
 
@@ -8,44 +8,44 @@ function Dashboard({ officeId }) {
   const [loading, setLoading] = useState(true);
 
   // Fetch initial data
-  const fetchPatients = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('PatientIntakes')
-      .select('*')
-      .eq('office_id', officeId)
-      .order('created_at', { ascending: false });
+const fetchPatients = useCallback(async () => {
+  setLoading(true);
 
-    if (error) {
-      console.error('Error fetching patients:', error.message);
-    } else {
-      setPatients(data);
-    }
-    setLoading(false);
-  };
+  const { data, error } = await supabase
+    .from('PatientIntakes')
+    .select('*')
+    .eq('office_id', officeId)
+    .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    fetchPatients(); // initial load
+  if (error) {
+    console.error('Error fetching patients:', error.message);
+  } else {
+    setPatients(data);
+  }
 
-    // Real-time subscription for new inserts
-    const subscription = supabase
-      .channel('public:PatientIntakes') // channel for table
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'PatientIntakes' },
-        (payload) => {
-          // Only add patients from the current office
-          if (payload.new.office_id === officeId) {
-            setPatients((prev) => [payload.new, ...prev]);
-          }
+  setLoading(false);
+}, [officeId]);
+
+useEffect(() => {
+  fetchPatients();
+
+  const subscription = supabase
+    .channel('public:PatientIntakes')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'PatientIntakes' },
+      (payload) => {
+        if (payload.new.office_id === officeId) {
+          setPatients((prev) => [payload.new, ...prev]);
         }
-      )
-      .subscribe();
+      }
+    )
+    .subscribe();
 
-    return () => {
-      supabase.removeChannel(subscription); // clean up on unmount
-    };
-  }, [officeId]);
+  return () => {
+    supabase.removeChannel(subscription);
+  };
+}, [fetchPatients, officeId]);
 
   return (
     <div className="dashboard-container">
