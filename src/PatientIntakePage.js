@@ -4,8 +4,8 @@ import PatientForm from './PatientForm';
 
 function PatientIntakePage() {
   return (
-    <div style={{ padding: '50px', textAlign: 'center' }}>
-      <h1>Patient Intake Form</h1>
+    <div style={{ padding: '50px' }}>
+      <h1>Patient Intake</h1>
       <PatientForm />
     </div>
   );
