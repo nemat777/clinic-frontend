@@ -1,198 +1,100 @@
 // src/PatientForm.js
-import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from './supabaseClient';
+import React, { useState, useEffect } from 'react';
 import './PatientForm.css';
 
-function PatientForm() {
-  const [offices, setOffices] = useState([]);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    dob: '',
-    email: '',
-    phone: '',
-    officeId: '',
-    symptoms: '',
-    summary: '',
-    medications: '',
-    allergies: '',
-    medicalHistory: '',
-    notes: ''
-  });
-  const [submitted, setSubmitted] = useState(false);
+export default function PatientForm() {
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  const [summary, setSummary] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // ref for debounce
-  const typingTimeout = useRef(null);
-
-  // Fetch offices from Supabase
+  // Debounce AI summary request
   useEffect(() => {
-    async function fetchOffices() {
-      const { data, error } = await supabase
-        .from('Offices')
-        .select('id, name');
-      if (error) console.error('Error fetching offices:', error);
-      else {
-        setOffices(data);
-        if (data.length > 0) setFormData(prev => ({ ...prev, officeId: data[0].id }));
-      }
-    }
-    fetchOffices();
-  }, []);
-
-  // Debounced symptoms change handler
-  const handleSymptomsChange = (e) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, symptoms: value }));
-
-    if (typingTimeout.current) clearTimeout(typingTimeout.current);
-
-    if (value.trim().length > 5) {
-      typingTimeout.current = setTimeout(() => callAISummary(value), 1000);
-    }
-  };
-
-  // Call AI summary via serverless API
-  const callAISummary = async (text) => {
-    setLoadingSummary(true);
-    try {
-      const response = await fetch('/api/ai-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: text })
-      });
-      const data = await response.json();
-      setFormData(prev => ({ ...prev, summary: data.summary }));
-    } catch (err) {
-      console.error('AI summary error:', err);
-    } finally {
-      setLoadingSummary(false);
-    }
-  };
-
-  // Handle other input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    // Validate required fields
-    if (!formData.firstName || !formData.lastName || !formData.dob || !formData.symptoms || !formData.officeId) {
-      setError('Please fill out all required fields.');
+    if (!symptoms) {
+      setSummary('');
       return;
     }
 
-    const { error } = await supabase
-      .from('PatientIntakes')
-      .insert([formData]);
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/ai-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symptoms }),
+        });
 
-    if (error) {
-      console.error('Supabase error:', error);
-      setError(`Submission failed: ${error.message}`);
-    } else {
-      setSubmitted(true);
+        if (!res.ok) throw new Error('AI request failed');
+        const data = await res.json();
+        setSummary(data.summary || '');
+      } catch (err) {
+        console.error(err);
+        setSummary('');
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeout);
+  }, [symptoms]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/submit-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, dob, symptoms, summary }),
+      });
+
+      if (!res.ok) throw new Error('Submission failed');
+      alert('Form submitted successfully!');
+      setName('');
+      setDob('');
+      setSymptoms('');
+      setSummary('');
+    } catch (err) {
+      console.error(err);
+      setError('Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (submitted) {
-    return (
-      <div className="form-success">
-        <h2>Thank you!</h2>
-        <p>Your information has been submitted successfully.</p>
-      </div>
-    );
-  }
-
   return (
     <form className="patient-form" onSubmit={handleSubmit}>
-      <h2 className="form-title">Patient Intake Form</h2>
-      {error && <p className="form-error">{error}</p>}
-
-      <div className="form-group">
-        <label>First Name *</label>
-        <input name="firstName" value={formData.firstName} onChange={handleChange} required />
-      </div>
-
-      <div className="form-group">
-        <label>Last Name *</label>
-        <input name="lastName" value={formData.lastName} onChange={handleChange} required />
-      </div>
-
-      <div className="form-group">
-        <label>Date of Birth *</label>
-        <input type="date" name="dob" value={formData.dob} onChange={handleChange} required />
-      </div>
-
-      <div className="form-group">
-        <label>Email</label>
-        <input type="email" name="email" value={formData.email} onChange={handleChange} />
-      </div>
-
-      <div className="form-group">
-        <label>Phone</label>
-        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} />
-      </div>
-
-      <div className="form-group">
-        <label>Office *</label>
-        <select name="officeId" value={formData.officeId} onChange={handleChange} required>
-          {offices.map(office => (
-            <option key={office.id} value={office.id}>{office.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="form-group">
-        <label>Symptoms *</label>
-        <textarea
-          name="symptoms"
-          value={formData.symptoms}
-          onChange={handleSymptomsChange}
-          placeholder="Describe your symptoms"
-          required
-        />
-        {loadingSummary && <p>Generating summary...</p>}
-      </div>
-
-      <div className="form-group">
-        <label>AI Summary</label>
-        <textarea
-          name="summary"
-          value={formData.summary}
-          readOnly
-          placeholder="AI-generated summary will appear here"
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Current Medications</label>
-        <textarea name="medications" value={formData.medications} onChange={handleChange} />
-      </div>
-
-      <div className="form-group">
-        <label>Allergies</label>
-        <textarea name="allergies" value={formData.allergies} onChange={handleChange} />
-      </div>
-
-      <div className="form-group">
-        <label>Medical History</label>
-        <textarea name="medicalHistory" value={formData.medicalHistory} onChange={handleChange} />
-      </div>
-
-      <div className="form-group">
-        <label>Additional Notes</label>
-        <textarea name="notes" value={formData.notes} onChange={handleChange} />
-      </div>
-
-      <button type="submit" className="form-submit">Submit</button>
+      <h2>Patient Intake Form</h2>
+      <input
+        type="text"
+        placeholder="Full Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <input
+        type="date"
+        placeholder="Date of Birth"
+        value={dob}
+        onChange={(e) => setDob(e.target.value)}
+        required
+      />
+      <textarea
+        placeholder="Describe your symptoms..."
+        value={symptoms}
+        onChange={(e) => setSymptoms(e.target.value)}
+        required
+      />
+      <textarea
+        placeholder="AI Summary"
+        value={summary}
+        readOnly
+      />
+      {error && <div className="error">{error}</div>}
+      <button type="submit" disabled={submitting}>
+        {submitting ? 'Submitting...' : 'Submit'}
+      </button>
     </form>
   );
 }
-
-export default PatientForm;
