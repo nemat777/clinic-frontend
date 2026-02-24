@@ -11,8 +11,9 @@ function PatientForm() {
     dob: '',
     email: '',
     phone: '',
-    officeId: '', // will be populated dynamically
+    officeId: '', // dynamically set
     symptoms: '',
+    summary: '',  // AI-generated
     medications: '',
     allergies: '',
     medicalHistory: '',
@@ -20,28 +21,48 @@ function PatientForm() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // Fetch offices from Supabase
+  // Fetch offices dynamically
   useEffect(() => {
     async function fetchOffices() {
       const { data, error } = await supabase
-        .from('Offices')  // replace with your actual offices table name
+        .from('Offices')
         .select('id, name');
       if (error) {
         console.error('Error fetching offices:', error);
       } else {
         setOffices(data);
         if (data.length > 0) {
-          setFormData(prev => ({ ...prev, officeId: data[0].id })); // default first office
+          setFormData(prev => ({ ...prev, officeId: data[0].id }));
         }
       }
     }
     fetchOffices();
   }, []);
 
-  const handleChange = (e) => {
+  // Handle input change
+  const handleChange = async (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    // AI summary for symptoms
+   if (name === 'symptoms' && value.trim().length > 5) {
+  setLoadingSummary(true);
+  try {
+    const response = await fetch('/api/ai-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symptoms: value })
+    });
+    const data = await response.json();
+    setFormData(prev => ({ ...prev, summary: data.summary }));
+  } catch (err) {
+    console.error('AI summary error:', err);
+  } finally {
+    setLoadingSummary(false);
+  }
+}
   };
 
   const handleSubmit = async (e) => {
@@ -55,7 +76,7 @@ function PatientForm() {
     }
 
     const { error } = await supabase
-      .from('PatientIntakes') // your table
+      .from('PatientIntakes')
       .insert([formData]);
 
     if (error) {
@@ -116,27 +137,44 @@ function PatientForm() {
 
       <div className="form-group">
         <label>Symptoms *</label>
-        <textarea name="symptoms" value={formData.symptoms} onChange={handleChange} placeholder="Describe your symptoms" required />
+        <textarea
+          name="symptoms"
+          value={formData.symptoms}
+          onChange={handleChange}
+          placeholder="Describe your symptoms"
+          required
+        />
+        {loadingSummary && <p>Generating summary...</p>}
+      </div>
+
+      <div className="form-group">
+        <label>AI Summary</label>
+        <textarea
+          name="summary"
+          value={formData.summary}
+          readOnly
+          placeholder="AI-generated summary will appear here"
+        />
       </div>
 
       <div className="form-group">
         <label>Current Medications</label>
-        <textarea name="medications" value={formData.medications} onChange={handleChange} placeholder="List any medications you take" />
+        <textarea name="medications" value={formData.medications} onChange={handleChange} />
       </div>
 
       <div className="form-group">
         <label>Allergies</label>
-        <textarea name="allergies" value={formData.allergies} onChange={handleChange} placeholder="List any allergies" />
+        <textarea name="allergies" value={formData.allergies} onChange={handleChange} />
       </div>
 
       <div className="form-group">
         <label>Medical History</label>
-        <textarea name="medicalHistory" value={formData.medicalHistory} onChange={handleChange} placeholder="Brief medical history" />
+        <textarea name="medicalHistory" value={formData.medicalHistory} onChange={handleChange} />
       </div>
 
       <div className="form-group">
         <label>Additional Notes</label>
-        <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="Any other information" />
+        <textarea name="notes" value={formData.notes} onChange={handleChange} />
       </div>
 
       <button type="submit" className="form-submit">Submit</button>
