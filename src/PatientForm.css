@@ -1,78 +1,69 @@
-/* src/PatientForm.css */
-
 .patient-form {
-  max-width: 700px;
+  max-width: 600px;
   margin: 40px auto;
   padding: 30px;
   background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.form-title {
-  text-align: center;
-  margin-bottom: 25px;
-  color: #333;
-}
-
-.form-group {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  margin-bottom: 15px;
+  gap: 16px;
 }
 
-.form-group label {
-  margin-bottom: 5px;
-  font-weight: 600;
-  color: #555;
+.patient-form h2 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #1e293b;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+.patient-form input,
+.patient-form textarea {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
   font-size: 14px;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.patient-form input:focus,
+.patient-form textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.patient-form textarea {
+  min-height: 100px;
   resize: vertical;
 }
 
-.form-group textarea {
-  min-height: 60px;
+.patient-form textarea[readonly] {
+  background-color: #f1f5f9;
+  color: #334155;
 }
 
-.form-error {
-  color: #d93025;
-  text-align: center;
-  margin-bottom: 15px;
-  font-weight: bold;
-}
-
-.form-success {
-  max-width: 600px;
-  margin: 50px auto;
-  padding: 30px;
-  background: #e6ffed;
-  border-radius: 10px;
-  border: 1px solid #5cb85c;
-  text-align: center;
-  color: #155724;
-  font-weight: bold;
-}
-
-.form-submit {
-  background: #007bff;
-  color: white;
+.patient-form button {
+  padding: 12px;
+  border-radius: 8px;
   border: none;
-  padding: 12px 25px;
-  font-size: 16px;
-  border-radius: 6px;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  margin-top: 10px;
+  transition: background-color 0.2s ease;
 }
 
-.form-submit:hover {
-  background: #0056b3;
+.patient-form button:hover {
+  background-color: #1d4ed8;
+}
+
+.patient-form button:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
 }
