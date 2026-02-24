@@ -1,5 +1,5 @@
 // src/PatientForm.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import './PatientForm.css';
 
@@ -11,9 +11,9 @@ function PatientForm() {
     dob: '',
     email: '',
     phone: '',
-    officeId: '', // dynamically set
+    officeId: '',
     symptoms: '',
-    summary: '',  // AI-generated
+    summary: '',
     medications: '',
     allergies: '',
     medicalHistory: '',
@@ -23,48 +23,61 @@ function PatientForm() {
   const [error, setError] = useState('');
   const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // Fetch offices dynamically
+  // ref for debounce
+  const typingTimeout = useRef(null);
+
+  // Fetch offices from Supabase
   useEffect(() => {
     async function fetchOffices() {
       const { data, error } = await supabase
         .from('Offices')
         .select('id, name');
-      if (error) {
-        console.error('Error fetching offices:', error);
-      } else {
+      if (error) console.error('Error fetching offices:', error);
+      else {
         setOffices(data);
-        if (data.length > 0) {
-          setFormData(prev => ({ ...prev, officeId: data[0].id }));
-        }
+        if (data.length > 0) setFormData(prev => ({ ...prev, officeId: data[0].id }));
       }
     }
     fetchOffices();
   }, []);
 
-  // Handle input change
-  const handleChange = async (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Debounced symptoms change handler
+  const handleSymptomsChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, symptoms: value }));
 
-    // AI summary for symptoms
-   if (name === 'symptoms' && value.trim().length > 5) {
-  setLoadingSummary(true);
-  try {
-    const response = await fetch('/api/ai-summary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symptoms: value })
-    });
-    const data = await response.json();
-    setFormData(prev => ({ ...prev, summary: data.summary }));
-  } catch (err) {
-    console.error('AI summary error:', err);
-  } finally {
-    setLoadingSummary(false);
-  }
-}
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+
+    if (value.trim().length > 5) {
+      typingTimeout.current = setTimeout(() => callAISummary(value), 1000);
+    }
   };
 
+  // Call AI summary via serverless API
+  const callAISummary = async (text) => {
+    setLoadingSummary(true);
+    try {
+      const response = await fetch('/api/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symptoms: text })
+      });
+      const data = await response.json();
+      setFormData(prev => ({ ...prev, summary: data.summary }));
+    } catch (err) {
+      console.error('AI summary error:', err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  // Handle other input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -140,7 +153,7 @@ function PatientForm() {
         <textarea
           name="symptoms"
           value={formData.symptoms}
-          onChange={handleChange}
+          onChange={handleSymptomsChange}
           placeholder="Describe your symptoms"
           required
         />
