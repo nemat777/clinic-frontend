@@ -31,26 +31,26 @@ function PatientForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
 
-    if (!formData.firstName || !formData.lastName || !formData.dob || !formData.symptoms) {
-      setError('Please fill out all required fields.');
-      return;
-    }
+  if (!formData.firstName || !formData.lastName || !formData.dob || !formData.symptoms) {
+    setError('Please fill out all required fields.');
+    return;
+  }
 
-    const { error } = await supabase
-      .from('PatientIntakes')
-      .insert([formData]);
+  const { error } = await supabase
+    .from('PatientIntakes')
+    .insert([formData]);
 
-    if (error) {
-      console.error(error);
-      setError('Submission failed. Please try again.');
-    } else {
-      setSubmitted(true);
-    }
-  };
+  if (error) {
+    console.error('Supabase error:', error);
+    setError(`Submission failed: ${error.message}`);
+  } else {
+    setSubmitted(true);
+  }
+};
 
   if (submitted) {
     return (
